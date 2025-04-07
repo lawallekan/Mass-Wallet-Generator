@@ -56,6 +56,11 @@
     </div>
   </div>
 
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-green-700 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity duration-300 z-50">
+    Copied to clipboard!
+  </div>
+
   <script>
     const generateBtn = document.getElementById("generate");
     const countInput = document.getElementById("count");
@@ -89,26 +94,49 @@
       saveAs(blob, 'wallets.json');
     }
 
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.remove("opacity-0");
+      toast.classList.add("opacity-100");
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-100");
+        toast.classList.add("opacity-0");
+      }, 2500);
+    }
+
     function copyToClipboard(text) {
-      if (navigator.clipboard) {
+      if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
-          alert("All wallet data copied to clipboard!");
+          showToast("✅ Wallet data copied!");
         }).catch(err => {
-          console.error('Failed to copy: ', err);
+          console.warn('⚠️ Clipboard API failed, using fallback.', err);
+          fallbackCopyText(text);
         });
       } else {
-        const tempTextArea = document.createElement("textarea");
-        tempTextArea.value = text;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-        try {
-          document.execCommand("copy");
-          alert("All wallet data copied to clipboard!");
-        } catch (err) {
-          console.error('Fallback: Copy command failed', err);
-        }
-        document.body.removeChild(tempTextArea);
+        fallbackCopyText(text);
       }
+    }
+
+    function fallbackCopyText(text) {
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = text;
+      tempTextArea.style.position = "fixed";
+      tempTextArea.style.opacity = "0";
+      document.body.appendChild(tempTextArea);
+      tempTextArea.focus();
+      tempTextArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        showToast(successful ? "✅ Wallet data copied (fallback)!" : "❌ Fallback copy failed.");
+      } catch (err) {
+        console.error('❌ Fallback: Unable to copy', err);
+        showToast("❌ Copy failed. Please copy manually.");
+      }
+
+      document.body.removeChild(tempTextArea);
     }
 
     generateBtn.onclick = () => {
@@ -136,9 +164,6 @@
     downloadCsvBtn.onclick = () => exportCSV(generatedWallets);
     downloadJsonBtn.onclick = () => exportJSON(generatedWallets);
     copyBtn.onclick = () => copyToClipboard(output.innerText);
-
-    QRCode.toCanvas(document.getElementById('evmQR'), '0x2c6c2540DDB1dD2d1EAfB8067EA96E60795863Ef', { width: 128 });
-    QRCode.toCanvas(document.getElementById('solQR'), 'BUxVCoHffRNec2RJQkYAucXPb8y6XAX1VbK8s7fnpAb7', { width: 128 });
   </script>
 </body>
 
